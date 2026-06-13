@@ -22,17 +22,29 @@
     </div>
 
     <div v-else class="grid grid-3">
-      <router-link
+      <div
         v-for="item in items"
         :key="item.id"
-        :to="'/item/' + item.id"
-        style="text-decoration:none;color:inherit;"
+        class="card"
+        style="padding:0;overflow:hidden;cursor:pointer;position:relative;"
       >
-        <div class="card" style="padding:0;overflow:hidden;cursor:pointer;">
+        <button
+          class="card-favorite-btn"
+          :class="{ 'card-favorited': isItemFavorited(item.id) }"
+          @click.stop="toggleCardFavorite(item)"
+          :title="isItemFavorited(item.id) ? '取消收藏' : '收藏'"
+        >
+          {{ isItemFavorited(item.id) ? '❤️' : '🤍' }}
+        </button>
+
+        <router-link
+          :to="'/item/' + item.id"
+          style="text-decoration:none;color:inherit;display:block;"
+        >
           <div style="width:100%;height:200px;overflow:hidden;background:#f0f0f0;position:relative;">
             <img :src="appendAuth(item.image)" alt="盲盒图片"
                  style="width:100%;height:100%;object-fit:cover;"/>
-            <div style="position:absolute;top:12px;right:12px;">
+            <div style="position:absolute;top:12px;left:12px;">
               <span :class="item.status === 'available' ? 'badge badge-available' : 'badge badge-exchanged'">
                 {{ item.status === 'available' ? '可交换' : '已交换' }}
               </span>
@@ -49,19 +61,21 @@
               发布于 {{ formatDate(item.createdAt) }}
             </p>
           </div>
-        </div>
-      </router-link>
+        </router-link>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getItems, appendAuth } from '../api/index.js'
+import { getItems, appendAuth, getMyFavorites, addFavorite, removeFavorite } from '../api/index.js'
 import { userStore } from '../store/user.js'
 
 const items = ref([])
 const loading = ref(true)
+const favoritedItemIds = ref(new Set())
+const togglingFavorites = ref(new Set())
 
 const categories = {
   book: '书籍类',
@@ -88,10 +102,45 @@ async function loadItems() {
   loading.value = true
   try {
     items.value = await getItems(userStore.user.id)
+    await loadFavorites()
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadFavorites() {
+  try {
+    const favorites = await getMyFavorites(userStore.user.id)
+    favoritedItemIds.value = new Set(
+      favorites.filter(f => f.item).map(f => f.itemId)
+    )
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function isItemFavorited(itemId) {
+  return favoritedItemIds.value.has(itemId)
+}
+
+async function toggleCardFavorite(item) {
+  if (togglingFavorites.value.has(item.id)) return
+  
+  togglingFavorites.value.add(item.id)
+  try {
+    if (favoritedItemIds.value.has(item.id)) {
+      await removeFavorite(item.id, userStore.user.id)
+      favoritedItemIds.value.delete(item.id)
+    } else {
+      await addFavorite(item.id, userStore.user.id)
+      favoritedItemIds.value.add(item.id)
+    }
+  } catch (e) {
+    alert('操作失败：' + (e.response && e.response.data ? e.response.data.error : e.message))
+  } finally {
+    togglingFavorites.value.delete(item.id)
   }
 }
 

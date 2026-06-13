@@ -4,12 +4,14 @@ import Publish from '../views/Publish.vue'
 import MyItems from '../views/MyItems.vue'
 import ItemDetail from '../views/ItemDetail.vue'
 import MyExchanges from '../views/MyExchanges.vue'
+import MyFavorites from '../views/MyFavorites.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
   { path: '/publish', name: 'Publish', component: Publish },
   { path: '/my-items', name: 'MyItems', component: MyItems },
   { path: '/my-exchanges', name: 'MyExchanges', component: MyExchanges },
+  { path: '/my-favorites', name: 'MyFavorites', component: MyFavorites },
   { path: '/item/:id', name: 'ItemDetail', component: ItemDetail, props: true }
 ]
 

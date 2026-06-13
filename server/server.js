@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const sharp = require('sharp');
-const { readItems, writeItems, readExchanges, writeExchanges } = require('./storage');
+const { readItems, writeItems, readExchanges, writeExchanges, readFavorites, writeFavorites } = require('./storage');
 
 const app = express();
 const PORT = 3435;
@@ -350,6 +350,121 @@ app.delete('/api/items/:id', (req, res) => {
   writeItems(items);
 
   res.json({ message: '删除成功' });
+});
+
+app.get('/api/favorites/check/:itemId', (req, res) => {
+  const { itemId } = req.params;
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: '缺少用户ID' });
+  }
+
+  const favorites = readFavorites();
+  const exists = favorites.some(f => f.userId === userId && f.itemId === itemId);
+
+  res.json({ isFavorited: exists });
+});
+
+app.post('/api/favorites/:itemId', (req, res) => {
+  const { itemId } = req.params;
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: '缺少用户ID' });
+  }
+
+  const items = readItems();
+  const item = items.find(i => i.id === itemId);
+
+  if (!item) {
+    return res.status(404).json({ error: '物品不存在' });
+  }
+
+  const favorites = readFavorites();
+  const exists = favorites.find(f => f.userId === userId && f.itemId === itemId);
+
+  if (exists) {
+    return res.status(400).json({ error: '已经收藏过了' });
+  }
+
+  const newFavorite = {
+    id: uuidv4(),
+    userId,
+    itemId,
+    createdAt: new Date().toISOString()
+  };
+
+  favorites.push(newFavorite);
+  writeFavorites(favorites);
+
+  res.status(201).json(newFavorite);
+});
+
+app.delete('/api/favorites/:itemId', (req, res) => {
+  const { itemId } = req.params;
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: '缺少用户ID' });
+  }
+
+  const favorites = readFavorites();
+  const index = favorites.findIndex(f => f.userId === userId && f.itemId === itemId);
+
+  if (index === -1) {
+    return res.status(404).json({ error: '收藏记录不存在' });
+  }
+
+  favorites.splice(index, 1);
+  writeFavorites(favorites);
+
+  res.json({ message: '取消收藏成功' });
+});
+
+app.get('/api/favorites', (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: '缺少用户ID' });
+  }
+
+  const favorites = readFavorites();
+  const items = readItems();
+
+  const myFavorites = favorites
+    .filter(f => f.userId === userId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map(f => {
+      const item = items.find(i => i.id === f.itemId);
+      if (!item) {
+        return {
+          id: f.id,
+          itemId: f.itemId,
+          createdAt: f.createdAt,
+          item: null,
+          status: 'deleted'
+        };
+      }
+      return {
+        id: f.id,
+        itemId: f.itemId,
+        createdAt: f.createdAt,
+        item: {
+          id: item.id,
+          category: item.category,
+          mysteryTags: item.mysteryTags,
+          image: getPublicImage(item),
+          ownerId: item.ownerId,
+          ownerName: item.ownerName,
+          status: item.status,
+          createdAt: item.createdAt
+        },
+        status: item.status
+      };
+    });
+
+  res.json(myFavorites);
 });
 
 app.get('/uploads/:filename', async (req, res) => {

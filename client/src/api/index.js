@@ -41,3 +41,19 @@ export function createExchange(myItemId, targetItemId) {
 export function getMyExchanges(userId) {
   return api.get('/exchanges/my', { params: { userId } }).then(res => res.data)
 }
+
+export function checkFavorite(itemId, userId) {
+  return api.get(`/favorites/check/${itemId}`, { params: { userId } }).then(res => res.data)
+}
+
+export function addFavorite(itemId, userId) {
+  return api.post(`/favorites/${itemId}`, { userId }).then(res => res.data)
+}
+
+export function removeFavorite(itemId, userId) {
+  return api.delete(`/favorites/${itemId}`, { params: { userId } }).then(res => res.data)
+}
+
+export function getMyFavorites(userId) {
+  return api.get('/favorites', { params: { userId } }).then(res => res.data)
+}

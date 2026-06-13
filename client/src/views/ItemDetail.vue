@@ -35,9 +35,20 @@
               {{ item.revealInfo ? item.realName : getCategoryName(item.category) }}
             </h2>
           </div>
-          <router-link to="/">
-            <button class="btn btn-secondary">返回列表</button>
-          </router-link>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button
+              v-if="!isOwner"
+              class="btn btn-favorite"
+              :class="{ 'btn-favorited': isFavorited }"
+              @click="toggleFavorite"
+              :disabled="favoriting"
+            >
+              {{ isFavorited ? '❤️ 已收藏' : '🤍 收藏' }}
+            </button>
+            <router-link to="/">
+              <button class="btn btn-secondary">返回列表</button>
+            </router-link>
+          </div>
         </div>
 
         <div style="margin-bottom:20px;">
@@ -121,7 +132,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getItemDetail, getMyItems, createExchange, appendAuth } from '../api/index.js'
+import { getItemDetail, getMyItems, createExchange, appendAuth, checkFavorite, addFavorite, removeFavorite } from '../api/index.js'
 import { userStore } from '../store/user.js'
 
 const route = useRoute()
@@ -132,6 +143,8 @@ const myItems = ref([])
 const myItemsLoading = ref(true)
 const selectedMyItemId = ref('')
 const exchanging = ref(false)
+const isFavorited = ref(false)
+const favoriting = ref(false)
 
 const categories = {
   book: '书籍类',
@@ -165,6 +178,33 @@ async function loadItem() {
   }
 }
 
+async function loadFavoriteStatus() {
+  try {
+    const result = await checkFavorite(route.params.id, userStore.user.id)
+    isFavorited.value = result.isFavorited
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function toggleFavorite() {
+  if (favoriting.value) return
+  favoriting.value = true
+  try {
+    if (isFavorited.value) {
+      await removeFavorite(route.params.id, userStore.user.id)
+      isFavorited.value = false
+    } else {
+      await addFavorite(route.params.id, userStore.user.id)
+      isFavorited.value = true
+    }
+  } catch (e) {
+    alert('操作失败：' + (e.response && e.response.data ? e.response.data.error : e.message))
+  } finally {
+    favoriting.value = false
+  }
+}
+
 async function loadMyItems() {
   myItemsLoading.value = true
   try {
@@ -192,8 +232,13 @@ async function handleExchange() {
   }
 }
 
-onMounted(function() {
-  loadItem()
+async function initPage() {
+  await loadItem()
+  if (item.value && !isOwner.value) {
+    loadFavoriteStatus()
+  }
   loadMyItems()
-})
+}
+
+onMounted(initPage)
 </script>

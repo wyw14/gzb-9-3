@@ -7,6 +7,7 @@
           <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
           <router-link to="/publish" class="nav-link" active-class="active">发布物品</router-link>
           <router-link to="/my-items" class="nav-link" active-class="active">我的物品</router-link>
+          <router-link to="/my-favorites" class="nav-link" active-class="active">我的收藏</router-link>
           <router-link to="/my-exchanges" class="nav-link" active-class="active">交换记录</router-link>
           <span style="margin-left:16px;color:#667eea;font-weight:500;">👤 {{ userStore.user.name }}</span>
         </div>
